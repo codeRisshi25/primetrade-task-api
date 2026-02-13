@@ -6,14 +6,15 @@ const sequelize = require("./config/db");
 const { User } = require("./models");
 
 const seedAdmin = async () => {
-  const exists = await User.findOne({ where: { email: "admin@primetrade.ai" } });
-  if (!exists) {
-    await User.create({
-      name: "Admin",
-      email: "admin@primetrade.ai",
-      password: await bcrypt.hash("admin123", 12),
-      role: "admin",
-    });
+  const hashed = await bcrypt.hash("admin123", 12);
+  const [user, created] = await User.findOrCreate({
+    where: { email: "admin@primetrade.ai" },
+    defaults: { name: "Admin", password: hashed, role: "admin" },
+  });
+  if (!created) {
+    await user.update({ password: hashed });
+    logger.info("Admin password reset");
+  } else {
     logger.info("Admin user seeded");
   }
 };
@@ -23,7 +24,7 @@ const start = async () => {
     await sequelize.authenticate();
     logger.info("Database connected");
 
-    await sequelize.sync({ alter: env.nodeEnv === "development" });
+    await sequelize.sync({ alter: true });
     logger.info("Models synced");
 
     await seedAdmin();
